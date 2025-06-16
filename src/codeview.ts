@@ -29,10 +29,32 @@ export class CodeView extends HTMLElement {
     }
 
     updateContent(content: string, type: string) {
-        if (type === "text/html") {
+        if (this.iframe == null) {
+            throw new Error("no iframe available");
+        }
+
+        const loader = () => {
+            this.iframe?.removeEventListener("load", loader);
+
             this.iframe?.contentDocument?.open();
-            this.iframe?.contentDocument?.writeln(content);
+
+            this.iframe?.contentWindow?.addEventListener("error", (error) => {
+                console.log(error);
+                alert(error.message);
+            });
+
+            const data = this.contentByMime(content, type);
+            this.iframe?.contentDocument?.writeln(data);
             this.iframe?.contentDocument?.close();
+        };
+
+        this.iframe.src = "about:blank";
+        this.iframe.addEventListener("load", loader);
+    }
+
+    contentByMime(content: string, type: string): string {
+        if (type === "text/html") {
+            return content;
         }
         else if (type === "text/javascript") {
             const html = `
@@ -49,9 +71,8 @@ export class CodeView extends HTMLElement {
                 </body>
                 </html>
             `;
-            this.iframe?.contentDocument?.open();
-            this.iframe?.contentDocument?.writeln(html);
-            this.iframe?.contentDocument?.close();
+
+            return html;
         }
         else {
             throw new Error("Unknown mime type: " + type);
